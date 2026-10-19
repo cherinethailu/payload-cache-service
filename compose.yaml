@@ -1,0 +1,37 @@
+services:
+  api:
+    build: .
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - cache-data:/data
+
+  # Same service backed by PostgreSQL: `docker compose --profile postgres up api-postgres`
+  api-postgres:
+    profiles: [postgres]
+    build: .
+    ports:
+      - "${API_POSTGRES_PORT:-8001}:8000"
+    environment:
+      PAYLOAD_CACHE_DATABASE_URL: postgresql+psycopg://cache:cache@db:5432/cache
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    profiles: [postgres]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cache
+      POSTGRES_PASSWORD: cache
+      POSTGRES_DB: cache
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cache"]
+      interval: 2s
+      retries: 15
+
+volumes:
+  cache-data:
+  pg-data:
